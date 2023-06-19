@@ -13,12 +13,15 @@ CONN = psycopg2.connect(
     password = SQL_parametr_connect['password']
 )
 
-def execute_request(text_request: str, requirement = '', ):
+def execute_request(text_request: str, requirement = '', fetchone = True):
     # Создание курсора
     with CONN.cursor() as curs:
         curs.execute(text_request, requirement)
         try:
-            results = curs.fetchone()
+            if fetchone:
+                results = curs.fetchone()
+            else:
+                results = curs.fetchall()
             return results
         except:
             CONN.commit()
@@ -50,6 +53,8 @@ def CreatUser(message):
         results = f'Ошибка при работе с SQL {error}'
     return  results
 
-def New_game(id_user):
-    text_sql_request = 'select login from users where users.id_users != %s'
-    results = execute_request(text_sql_request, (id_user,))
+def New_game(id_user: int):
+    text_sql_request = 'select users.login, users.id_users  from users where users.id_users != %s'
+    results = execute_request(text_sql_request, (id_user,), fetchone = False)
+    return results
+

@@ -3,16 +3,17 @@ import SQL_mode
 import dict_cod
 import telebot
 from telebot import types
-from dataclasses import dataclass
 
 # Создаем бота
 bot = telebot.TeleBot(config.token)#load tokin chat bot
 
+#Edit
+#COD_WORK_WHITH_USERS_BUTTON = False
 
 def Creat_NameButton(list_name):
     keyboard = types.InlineKeyboardMarkup()
     for NameButton in list_name:
-        callback_button = types.InlineKeyboardButton(text=NameButton, callback_data=NameButton)
+        callback_button = types.InlineKeyboardButton(text=NameButton[0], callback_data=NameButton[1])
         keyboard.add(callback_button)
     return keyboard
 
@@ -31,14 +32,39 @@ def start(message):
 
 @bot.message_handler(commands=["new_game"])
 def new_game(message):
-    bot.send_message(141029496, 'очень круто! Спасибо за сотрудничество!')
+    CHAT_ID = message.from_user.id
+    fetchall = SQL_mode.New_game(CHAT_ID)
+    if fetchall == None:
+        bot.send_message(CHAT_ID, 'Список участников пуст.')
+    keyboard = Creat_NameButton(fetchall)
+    text_message = 'С кем вы хотите сыграить?'
+   # Edit
+   # COD_WORK_WHITH_USERS_BUTTON = '12_01'
+    bot.send_message(message.chat.id, text_message, reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     cod = call.data
     message = call.message
-    result = dict_cod.dict_cod_result[cod](message)
-    bot.send_message(message.chat.id, result)
+    result_req = dict_cod.dict_cod_result.get(cod)
+    #Кнопки с именами ползователей в возвратных данных (cod) содержет ID их чата...
+    #...т.е. на них нет кода в справочнике
+    if result_req == None:
+        result = dict_cod.dict_cod_result.get('12_01')(message)
+        bot.send_message(message.chat.id, 'Приглашение отправлено')
+        chat_id = cod
+    else:
+        result = result_req(message)
+        chat_id = message.chat.id
+
+    text_message = result['text_message']
+    list_name_button = result['list_name_button']
+
+    keyboard = Creat_NameButton(list_name_button)
+    bot.send_message(chat_id, text_message, reply_markup=keyboard)
+
+   #Edit
+   # COD_WORK_WHITH_USERS_BUTTON = False
 
 # Запускаем бота
 bot.polling(none_stop=True, interval=0)
