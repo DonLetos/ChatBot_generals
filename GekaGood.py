@@ -38,8 +38,8 @@ def new_game(message):
         bot.send_message(CHAT_ID, 'Список участников пуст.')
     keyboard = Creat_NameButton(fetchall)
     text_message = 'С кем вы хотите сыграить?'
-   # Edit
-   # COD_WORK_WHITH_USERS_BUTTON = '12_01'
+    # Edit
+    # COD_WORK_WHITH_USERS_BUTTON = '12_01'
     bot.send_message(message.chat.id, text_message, reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -47,12 +47,20 @@ def callback_inline(call):
     cod = call.data
     message = call.message
     result_req = dict_cod.dict_cod_result.get(cod)
-    #Кнопки с именами ползователей в возвратных данных (cod) содержет ID их чата...
-    #...т.е. на них нет кода в справочнике
-    if result_req == None:
-        result = dict_cod.dict_cod_result.get('12_01')(message)
-        bot.send_message(message.chat.id, 'Приглашение отправлено')
-        chat_id = cod
+    # Кнопки с именами ползователей в возвратных данных (cod) содержет ID их чата...
+    # ...т.е. на них нет кода в справочнике
+    if result_req is None:
+        cod_button = str(cod[:7])
+        result_req = dict_cod.dict_cod_result.get(cod_button)
+        if result_req is None:
+            result = dict_cod.dict_cod_result.get('12_001_')(message)
+            chat_id = cod
+            bot.send_message(message.chat.id, 'Приглашение отправлено')
+        else:
+            chat_id = str(cod[7:])
+            result = result_req((message, chat_id))
+            if result.get('chat_id') is not None:
+                chat_id = result.get('chat_id')
     else:
         result = result_req(message)
         chat_id = message.chat.id
