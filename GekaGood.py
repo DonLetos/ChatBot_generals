@@ -17,6 +17,7 @@ def Creat_NameButton(list_name):
         keyboard.add(callback_button)
     return keyboard
 
+
 # Команда start
 @bot.message_handler(commands=["start"])
 def start(message):
@@ -30,6 +31,7 @@ def start(message):
     keyboard = Creat_NameButton(list_name_button)
     bot.send_message(message.chat.id, text_message, reply_markup=keyboard)
 
+
 @bot.message_handler(commands=["new_game"])
 def new_game(message):
     CHAT_ID = message.from_user.id
@@ -41,6 +43,7 @@ def new_game(message):
     # Edit
     # COD_WORK_WHITH_USERS_BUTTON = '12_01'
     bot.send_message(message.chat.id, text_message, reply_markup=keyboard)
+
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
@@ -59,20 +62,29 @@ def callback_inline(call):
         else:
             chat_id = str(cod[7:])
             result = result_req((message, chat_id))
-            if result.get('chat_id') is not None:
-                chat_id = result.get('chat_id')
+            if isinstance(result, list) == False:
+                if result.get('chat_id') is not None:
+                    chat_id = result.get('chat_id')
     else:
         result = result_req(message)
         chat_id = message.chat.id
+    if isinstance(result, list):
+        for res in result:
+            text_message = res['text_message']
+            list_name_button = res['list_name_button']
+            chat_id = res['chat_id']
 
-    text_message = result['text_message']
-    list_name_button = result['list_name_button']
+            keyboard = Creat_NameButton(list_name_button)
+            bot.send_message(chat_id, text_message, reply_markup=keyboard)
+    else:
+        text_message = result['text_message']
+        list_name_button = result['list_name_button']
 
-    keyboard = Creat_NameButton(list_name_button)
-    bot.send_message(chat_id, text_message, reply_markup=keyboard)
+        keyboard = Creat_NameButton(list_name_button)
+        bot.send_message(chat_id, text_message, reply_markup=keyboard)
 
-   #Edit
-   # COD_WORK_WHITH_USERS_BUTTON = False
+#Edit
+# COD_WORK_WHITH_USERS_BUTTON = False
 
 # Запускаем бота
 bot.polling(none_stop=True, interval=0)

@@ -41,8 +41,10 @@ def CreatUser(message):
     text_sql_request = (f'INSERT INTO users'
                         f'(id_users, login, chat_id, firstname,lastname) '
                         f'VALUES( %s,  %s,  %s,  %s,  %s);')
-    if data.username == None:
-        user_name = data.last_name +' '+ data.first_name
+    if data.username is None:
+        last_name = ' ' if data.last_name is None else data.last_name
+        first_name = ' ' if  data.first_name is None else data.first_name
+        user_name = last_name +' '+ first_name
     else:
         user_name = data.username
     VALUES = (data.id, user_name, data.id, data.first_name, data.last_name)
@@ -79,7 +81,7 @@ def CreatGame(message: tuple):
 
 
 def New_game(id_user: int):
-    text_sql_request = 'select users.login, users.id_users  from users where users.id_users != %s'
+    text_sql_request = 'select users.login, users.id_users  from users ' #where users.id_users != %s'
     results = execute_request(text_sql_request, (id_user,), fetchone = False)
     return results
 
@@ -89,15 +91,81 @@ def TurnGame(id_game):
     result = execute_request(text_sql_request, (id_game, ))
     return result
 
-def EndGame(id_game):
+
+def TernGame_SaveTurn(id_game: int, it_turn_first_player: bool, score: int):
+    if it_turn_first_player:
+        sql_text = 'first_players_score'
+    else:
+        sql_text = 'second_players_score'
+    text_sql_request = f'update game set {sql_text} = %s where id_game = %s'
+    try:
+        execute_request_edit(text_sql_request, (score, str(id_game)))
+        results = f'Ваш результат:: {score}'
+        name_button = [
+            ('TAKE MORE', f'33_001_{id_game}'),
+            ('PASS', f'33_003_{id_game}')
+        ]
+    except psycopg2.Error as error:
+        results = f'Ошибка при работе с SQL {error}'
+        name_button = []
+    return {'text': results, 'namebutton': name_button}
+
+
+def EndGame(id_game, score):
     text_sql_request = 'delete from game where game.id_game = %s'
     try:
         execute_request_edit(text_sql_request, (id_game,))
-        results = 'Вы проиграли'
+        results = f'Вы проиграли! У вас перебор. {score}'
     except psycopg2.Error as error:
         results = f'Ошибка при работе с SQL {error}'
     return results
 
 
 def NextTurn(id_game):
-    pass
+    text_sql_request = (f'select game.turn_first_player,  ' 
+                       f'game.id_first_player,' 
+                       f'game.id_second_player,' 
+                       f'game.first_players_score,'
+                       f'game.second_players_score'  
+                       f' from game where id_game = %s')
+    value = (str(id_game),)
+    request_rez = execute_request(text_sql_request, value)
+
+    f_score = request_rez[3]
+    s_score = request_rez[4]
+    text_win = 'Вы победили'
+    text_lose = 'Вы проиграли. у вас меньше'
+    if f_score != 0 and s_score != 0:
+        WIN_FIRST_PLAYER = f_score > s_score
+        if WIN_FIRST_PLAYER:
+            win_id_chat = request_rez[1]
+            lose_id_chat = request_rez[2]
+        else:
+            win_id_chat = request_rez[2]
+            lose_id_chat = request_rez[1]
+        win_rez = f_score - s_score
+        if win_rez == 0:
+            text_win = text_lose = 'НИЧЬЯ!'
+        list_result = [
+                        {'text_message': text_win, 'chat_id': win_id_chat, 'list_name_button': []},
+                        {'text_message': text_lose, 'chat_id': lose_id_chat, 'list_name_button': []}
+                      ]
+        return list_result
+    else:
+        chak_bool = not request_rez[0]
+        if chak_bool:
+            id_chat = request_rez[1]
+        else:
+            id_chat = request_rez[2]
+        text_sql_request = (
+                        f'update game set turn_first_player = %s'
+                        f' where id_game = %s'
+                        )
+        value = (str(chak_bool), str(id_game))
+        try:
+            execute_request_edit(text_sql_request, value)
+            result = {'text':'Ваш ход!', 'chat_id': id_chat, 'error': False}
+        except psycopg2.Error as error:
+            text = f'Ошибка при работе с SQL {error}'
+            result = {'text': text, 'chat_id': id_chat, 'error': True}
+    return result
